@@ -6,6 +6,7 @@ from PIL import Image
 from numpy import ndarray
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error
+import cv2
 
 
 class RigidTransformFinder:
@@ -70,12 +71,13 @@ class RigidTransformFinder:
         plt.show()
 
     @staticmethod
-    def calc_point_based_reg(bl_points: np.ndarray, fu_points: np.ndarray) -> np.ndarray:
+    def calc_point_based_reg(p: np.ndarray, q: np.ndarray) -> np.ndarray:
         """
         Given two nx2 arrays bl and fu, each row being a 2d point that corresponds to the
         point in the other matrix, find the transformation that minimizes the least squared distance
         between the two using SVD to find the rotation and translation and then returns the 3x3 rigid
-        transformation matrix
+        transformation matrix.
+        The transformation matrix moves p onto q
         Parameters
         ----------
         bl_points
@@ -87,14 +89,14 @@ class RigidTransformFinder:
         """
 
         # compute centroids and centered vectors
-        bl_centroid = np.mean(bl_points, axis=0)
-        fu_centroid = np.mean(fu_points, axis=0)
+        p_centroid = np.mean(p, axis=0)
+        q_centroid = np.mean(q, axis=0)
 
-        bl_centered = bl_points - bl_centroid
-        fu_centered = fu_points - fu_centroid
+        p_centered = p - p_centroid
+        q_centered = q - q_centroid
 
         # compute rotation using svd of covariance matrix
-        cov_matrix = bl_centered.T @ fu_centered
+        cov_matrix = p_centered.T @ q_centered
         u, s, vh = np.linalg.svd(cov_matrix)
         det_v_ut = np.linalg.det(vh.T @ u.T)
         n = cov_matrix.shape[0]
@@ -103,7 +105,7 @@ class RigidTransformFinder:
         R = vh.T @ middle_rotation_component @ u.T
 
         # compute translation using rotation and centroids
-        t = fu_centroid - R.dot(bl_centroid)
+        t = q_centroid - R.dot(p_centroid)
 
         # compute and return 3x3 rigid matrix
         # R | t
@@ -134,9 +136,32 @@ class RigidTransformFinder:
         bl_homo = np.vstack((bl_points.T, np.ones((bl_points.shape[0], 1)).T))
         fu_homo = np.vstack((fu_points.T, np.ones((bl_points.shape[0], 1)).T))
 
-        transformed_bl = rigid_matrix @ bl_homo
-        rmse = mean_squared_error(fu_homo, transformed_bl)
+        transformed_fu = rigid_matrix @ fu_homo
+        rmse = mean_squared_error(bl_homo, transformed_fu)
         print(rmse)
+
+    def register(self, bl_points: np.ndarray, fu_points: np.ndarray) -> None:
+        """
+        Registers fu onto bl
+        Parameters
+        ----------
+        fu_points : follow up points
+        bl_points : baseline points
+
+        Returns
+        -------
+
+        """
+
+        bl, fu = self.read_images()
+        _, _, rigid_transformation = RigidTransformFinder.calc_point_based_reg(fu_points, bl_points)
+        rows, cols, _ = bl.shape
+        transformed_fu = cv2.warpAffine(fu, rigid_transformation[:2, :], (cols, rows))
+        bl = Image.fromarray(bl).convert("RGBA")
+        transformed_fu = Image.fromarray(transformed_fu).convert("RGBA")
+
+        new_img = Image.blend(bl, transformed_fu, 0.5)
+        new_img.save("new.png", "PNG")
 
 
 def run():
@@ -150,8 +175,10 @@ def run():
     # registrator.plot_points_on_images()
 
     bl_points, fu_points = getPoints('no_outliers')
-    R, t, rigid_transformation = registrator.calc_point_based_reg(bl_points, fu_points)
-    registrator.calc_dist(bl_points, fu_points, rigid_transformation)
+    # R, t, rigid_transformation = registrator.calc_point_based_reg(fu_points, bl_points)
+    # registrator.calc_dist(bl_points, fu_points, rigid_transformation)
+    #
+    registrator.register(bl_points, fu_points)
 
 
 
