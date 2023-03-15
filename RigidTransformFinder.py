@@ -153,13 +153,15 @@ class RigidTransformFinder:
 
         """
 
+        # Warp image
         bl, fu = self.read_images()
         _, _, rigid_transformation = RigidTransformFinder.calc_point_based_reg(fu_points, bl_points)
         rows, cols, _ = bl.shape
         transformed_fu = cv2.warpAffine(fu, rigid_transformation[:2, :], (cols, rows))
+
+        # Create overlay of fl onto bl and save
         bl = Image.fromarray(bl).convert("RGBA")
         transformed_fu = Image.fromarray(transformed_fu).convert("RGBA")
-
         new_img = Image.blend(bl, transformed_fu, 0.5)
         new_img.save("new.png", "PNG")
 
