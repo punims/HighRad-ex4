@@ -1,6 +1,5 @@
-from typing import Tuple
 from os.path import join
-from utils import getPoints
+from utils import getPoints, ransac
 import numpy as np
 from PIL import Image
 from numpy import ndarray
@@ -113,11 +112,11 @@ class RigidTransformFinder:
         transformation_matrix = np.hstack((R, t[:, np.newaxis]))
         transformation_matrix = np.vstack((transformation_matrix, [0, 0, 1]))
 
-        return R, t, transformation_matrix
+        return transformation_matrix
 
 
     @staticmethod
-    def calc_dist(bl_points: np.ndarray, fu_points: np.ndarray, rigid_matrix: np.ndarray) -> None:
+    def calc_dist(bl_points: np.ndarray, fu_points: np.ndarray, rigid_matrix: np.ndarray) -> float:
         """
         Calculates the Root Mean Squared Error between the points bl,1 and rigid_matrix * fu,1
         Note that the rigid matrix is a 3x3 matrix so that we need to use homogenous coordinates
@@ -139,6 +138,7 @@ class RigidTransformFinder:
         transformed_fu = rigid_matrix @ fu_homo
         rmse = mean_squared_error(bl_homo, transformed_fu)
         print(rmse)
+        return rmse
 
     def register(self, bl_points: np.ndarray, fu_points: np.ndarray) -> None:
         """
@@ -155,7 +155,7 @@ class RigidTransformFinder:
 
         # Warp image
         bl, fu = self.read_images()
-        _, _, rigid_transformation = RigidTransformFinder.calc_point_based_reg(fu_points, bl_points)
+        rigid_transformation = RigidTransformFinder.calc_point_based_reg(fu_points, bl_points)
         rows, cols, _ = bl.shape
         transformed_fu = cv2.warpAffine(fu, rigid_transformation[:2, :], (cols, rows))
 
@@ -165,6 +165,24 @@ class RigidTransformFinder:
         new_img = Image.blend(bl, transformed_fu, 0.5)
         new_img.save("new.png", "PNG")
 
+
+    def calc_robust_point_based_reg(self, bl_with_outliers: np.ndarray, fu_with_outliers: np.ndarray) -> np.ndarray:
+        """
+        Given two sets of points that might contain outliers from the bl and fu images
+        uses ransac to find the best transformation using these sets of points.
+
+        Parameters
+        ----------
+        self
+        bl_with_outliers
+        fu_with_outliers
+
+        Returns
+        -------
+
+        """
+        return ransac(fu_with_outliers, bl_with_outliers, RigidTransformFinder.calc_point_based_reg, RigidTransformFinder.calc_dist,
+                      minPtNum=3, iterNum=10, thDist=1, thInlrRatio=0.5)
 
 def run():
     dataset_path = "/home/edan/Desktop/HighRad/Exercises/data/Targil2_data_2018-20230315T115832Z-001/Targil2_data_2018"
@@ -177,10 +195,13 @@ def run():
     # registrator.plot_points_on_images()
 
     bl_points, fu_points = getPoints('no_outliers')
-    # R, t, rigid_transformation = registrator.calc_point_based_reg(fu_points, bl_points)
+    # rigid_transformation = registrator.calc_point_based_reg(fu_points, bl_points)
     # registrator.calc_dist(bl_points, fu_points, rigid_transformation)
     #
-    registrator.register(bl_points, fu_points)
+    # registrator.register(bl_points, fu_points)
+
+    bl_w_outliers, fu_w_outliers = getPoints('with_outliers')
+    transormation, indices = registrator.calc_robust_point_based_reg(bl_w_outliers, fu_w_outliers)
 
 
 
