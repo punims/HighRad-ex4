@@ -76,7 +76,9 @@ class RigidTransformFinder:
         point in the other matrix, find the transformation that minimizes the least squared distance
         between the two using SVD to find the rotation and translation and then returns the 3x3 rigid
         transformation matrix.
-        The transformation matrix moves p onto q
+        The transformation matrix moves p onto q, the returned matrix is the inverse which moves q onto p
+
+
         Parameters
         ----------
         bl_points
@@ -112,33 +114,32 @@ class RigidTransformFinder:
         transformation_matrix = np.hstack((R, t[:, np.newaxis]))
         transformation_matrix = np.vstack((transformation_matrix, [0, 0, 1]))
 
-        return transformation_matrix
+        return np.linalg.inv(transformation_matrix).T
 
 
     @staticmethod
     def calc_dist(bl_points: np.ndarray, fu_points: np.ndarray, rigid_matrix: np.ndarray) -> float:
         """
-        Calculates the Root Mean Squared Error between the points bl,1 and rigid_matrix * fu,1
+        Calculates the Root Mean Squared Error between the points bl,1 and fu,1 * rigid_matrix
         Note that the rigid matrix is a 3x3 matrix so that we need to use homogenous coordinates
-        Parameters
+        Parameters and prints it. returns the n length vector of the residual distances
         ----------
         bl_points nx2 points matrix
         fu_points nx2 points matrix
         rigid_matrix 3x3 rigid transformation matrix
 
-        Returns
+        Returns residual distances of rmse
         -------
 
         """
 
         # homogenous coordinates
-        bl_homo = np.vstack((bl_points.T, np.ones((bl_points.shape[0], 1)).T))
-        fu_homo = np.vstack((fu_points.T, np.ones((bl_points.shape[0], 1)).T))
+        bl_homo = np.hstack((bl_points, np.ones((bl_points.shape[0], 1))))
+        fu_homo = np.hstack((fu_points, np.ones((bl_points.shape[0], 1))))
 
-        transformed_fu = rigid_matrix @ fu_homo
+        transformed_fu = fu_homo @ rigid_matrix
         rmse = mean_squared_error(bl_homo, transformed_fu)
-        print(rmse)
-        return rmse
+        return np.sqrt(np.sum(np.square(transformed_fu - bl_homo), axis=1))
 
     def register(self, bl_points: np.ndarray, fu_points: np.ndarray) -> None:
         """
@@ -181,8 +182,8 @@ class RigidTransformFinder:
         -------
 
         """
-        return ransac(fu_with_outliers, bl_with_outliers, RigidTransformFinder.calc_point_based_reg, RigidTransformFinder.calc_dist,
-                      minPtNum=3, iterNum=10, thDist=1, thInlrRatio=0.5)
+        return ransac(bl_with_outliers, fu_with_outliers, RigidTransformFinder.calc_point_based_reg, RigidTransformFinder.calc_dist,
+                      minPtNum=4, iterNum=1000, thDist=10, thInlrRatio=0.3)
 
 def run():
     dataset_path = "/home/edan/Desktop/HighRad/Exercises/data/Targil2_data_2018-20230315T115832Z-001/Targil2_data_2018"
@@ -194,8 +195,8 @@ def run():
     registrator = RigidTransformFinder(bl, fu)
     # registrator.plot_points_on_images()
 
-    bl_points, fu_points = getPoints('no_outliers')
-    # rigid_transformation = registrator.calc_point_based_reg(fu_points, bl_points)
+    # bl_points, fu_points = getPoints('no_outliers')
+    # rigid_transformation = registrator.calc_point_based_reg(bl_points, fu_points)
     # registrator.calc_dist(bl_points, fu_points, rigid_transformation)
     #
     # registrator.register(bl_points, fu_points)
