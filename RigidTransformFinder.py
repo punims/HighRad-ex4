@@ -40,7 +40,7 @@ class RigidTransformFinder:
 
         return bl, fu
 
-    def plot_points_on_images(self) -> None:
+    def plot_points_on_images(self, points1, points2) -> None:
         """
         reads the images and plots points from getPoints onto them.
         getPoints returns the points for bl and then fu.
@@ -55,8 +55,6 @@ class RigidTransformFinder:
         ax2.imshow(fu)
         ax2.set_title('follow-up')
 
-        points1, points2 = getPoints('no_outliers')
-
         for i in range(len(points1)):
             ax1.scatter(points1[i][0], points1[i][1])
             ax1.annotate(i, (points1[i][0], points1[i][1]), color='red',
@@ -68,6 +66,46 @@ class RigidTransformFinder:
                          fontsize=12)
 
         plt.show()
+
+    def plot_with_outliers(self, points1, points2, indices):
+        """
+        Plots 2 images side by side, marking all indices within indices as inliers with one color
+        and another color for all other indices.
+        Parameters
+        ----------
+        points1
+        points2
+        indices
+
+        Returns
+        -------
+
+        """
+
+        bl, fu = self.read_images()
+        fig, (ax1, ax2) = plt.subplots(1, 2)
+        ax1.imshow(bl)
+        ax1.set_title('baseline')
+        ax2.imshow(fu)
+        ax2.set_title('follow-up')
+        inlier_color = 'red'
+        outlier_color = 'blue'
+
+        for i in range(len(points1)):
+
+            if i in indices:
+                color = inlier_color
+            else:
+                color = outlier_color
+            ax1.scatter(points1[i][0], points1[i][1], color=color)
+            ax2.scatter(points2[i][0], points2[i][1], color=color)
+            ax1.annotate(i, (points1[i][0], points1[i][1]), color='black',
+                         fontsize=12)
+            ax2.annotate(i, (points2[i][0], points2[i][1]), color='black',
+                         fontsize=12)
+
+        plt.show()
+
 
     @staticmethod
     def calc_point_based_reg(p: np.ndarray, q: np.ndarray) -> np.ndarray:
@@ -141,7 +179,7 @@ class RigidTransformFinder:
         rmse = mean_squared_error(bl_homo, transformed_fu)
         return np.sqrt(np.sum(np.square(transformed_fu - bl_homo), axis=1))
 
-    def register(self, bl_points: np.ndarray, fu_points: np.ndarray) -> None:
+    def register(self, bl_points: np.ndarray, fu_points: np.ndarray, transform: np.ndarray = None) -> None:
         """
         Registers fu onto bl
         Parameters
@@ -156,9 +194,10 @@ class RigidTransformFinder:
 
         # Warp image
         bl, fu = self.read_images()
-        rigid_transformation = RigidTransformFinder.calc_point_based_reg(fu_points, bl_points)
+        if not transform:
+            transform = RigidTransformFinder.calc_point_based_reg(bl_points, fu_points)
         rows, cols, _ = bl.shape
-        transformed_fu = cv2.warpAffine(fu, rigid_transformation[:2, :], (cols, rows))
+        transformed_fu = cv2.warpAffine(fu, transform[:, :2].T, (cols, rows))
 
         # Create overlay of fl onto bl and save
         bl = Image.fromarray(bl).convert("RGBA")
@@ -198,11 +237,13 @@ def run():
     # bl_points, fu_points = getPoints('no_outliers')
     # rigid_transformation = registrator.calc_point_based_reg(bl_points, fu_points)
     # registrator.calc_dist(bl_points, fu_points, rigid_transformation)
-    #
+
     # registrator.register(bl_points, fu_points)
 
     bl_w_outliers, fu_w_outliers = getPoints('with_outliers')
-    transormation, indices = registrator.calc_robust_point_based_reg(bl_w_outliers, fu_w_outliers)
+    transformation, indices = registrator.calc_robust_point_based_reg(bl_w_outliers, fu_w_outliers)
+    registrator.plot_with_outliers(bl_w_outliers, fu_w_outliers, indices)
+
 
 
 
