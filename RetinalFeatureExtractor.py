@@ -4,7 +4,7 @@ import cv2
 from matplotlib import pyplot as plt
 from PIL import Image
 from skimage.morphology import disk
-from scipy.ndimage import gaussian_filter, median_filter, binary_opening, binary_erosion, binary_closing, label
+from scipy.ndimage import median_filter, binary_opening, binary_erosion, label
 
 class RetinalFeatureExtractor:
     """
@@ -13,7 +13,18 @@ class RetinalFeatureExtractor:
     """
 
     @staticmethod
-    def segment_blood_vessel(image: np.ndarray):
+    def segment_blood_vessel(image: np.ndarray) -> np.ndarray:
+        """
+        Receives an image of a retina as a ndarray and tries to segment the blood vessels from within the retina image.
+        Parameters
+        ----------
+        image
+
+        Returns
+        segmentation image.
+        -------
+
+        """
 
         # worked according to this method: https://iopscience.iop.org/article/10.1088/1742-6596/1376/1/012023/pdf
 
@@ -51,8 +62,20 @@ class RetinalFeatureExtractor:
         plt.imshow(segmented_image, cmap='gray')
         plt.show()
 
+        return segmented_image
+
     @staticmethod
-    def find_retina_features(image):
+    def find_retina_features(image: np.ndarray) -> list:
+        """
+        Uses cv2 to extract SIFT keypoints
+        Parameters
+        ----------
+        image
+
+        Returns
+        -------
+
+        """
         sift = cv2.SIFT_create()
         kp = sift.detect(image, None)
         sift_image = cv2.drawKeypoints(image, kp, image)
