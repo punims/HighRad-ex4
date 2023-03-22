@@ -194,7 +194,7 @@ class RigidTransformFinder:
 
         # Warp image
         bl, fu = self.read_images()
-        if not transform:
+        if transform is not None:
             transform = RigidTransformFinder.calc_point_based_reg(bl_points, fu_points)
         rows, cols, _ = bl.shape
         transformed_fu = cv2.warpAffine(fu, transform[:, :2].T, (cols, rows))
@@ -222,7 +222,7 @@ class RigidTransformFinder:
 
         """
         return ransac(bl_with_outliers, fu_with_outliers, RigidTransformFinder.calc_point_based_reg, RigidTransformFinder.calc_dist,
-                      minPtNum=4, iterNum=1000, thDist=10, thInlrRatio=0.3)
+                      minPtNum=40, iterNum=1000, thDist=10, thInlrRatio=0.1)
 
 def run():
     dataset_path = "/home/edan/Desktop/HighRad/Exercises/data/Targil2_data_2018-20230315T115832Z-001/Targil2_data_2018"

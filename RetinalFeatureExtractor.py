@@ -126,11 +126,8 @@ class RetinalFeatureExtractor:
         segmented_image = gaussian_filter(segmented_image, sigma=3)
         plt.imshow(segmented_image, cmap='gray')
         plt.show()
-
-
-
-
         return segmented_image
+
     @staticmethod
     def find_retina_features(image: np.ndarray) -> list:
         """
@@ -143,16 +140,17 @@ class RetinalFeatureExtractor:
         -------
 
         """
-        sift = cv2.SIFT_create()
+        sift = cv2.SIFT_create(100)
         kp = sift.detect(image, None)
         sift_image = cv2.drawKeypoints(image, kp, image)
         # show the image
-        cv2.imshow('image', sift_image)
-        # save the image
-        cv2.imwrite("table-sift.jpg", sift_image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        return kp
+        plt.imshow(sift_image)
+        plt.show()
+        points = np.array([point.pt for point in kp])
+        # n = 2000
+        # index = np.random.choice(points.shape[0], n, replace=False)
+        # return points[index]
+        return points
 
 
 if __name__ == '__main__':

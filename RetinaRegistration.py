@@ -2,6 +2,7 @@ import numpy as np
 from PIL import Image
 from RetinalFeatureExtractor import RetinalFeatureExtractor
 from RigidTransformFinder import RigidTransformFinder
+from os.path import join
 
 
 class RetinaRegistration:
@@ -35,11 +36,14 @@ class RetinaRegistration:
 
         # Get a match of the key points
         bl_keypoints, fu_keypoints = RetinaRegistration.match_keypoints(bl_keypoints, fu_keypoints)
+        bl_keypoints = np.array(bl_keypoints)
+        fu_keypoints = np.array(fu_keypoints)
 
         # register and plot
         registrator = RigidTransformFinder(bl_path, fu_path)
         transformation, indices = registrator.calc_robust_point_based_reg(bl_keypoints, fu_keypoints)
         registrator.plot_with_outliers(bl_keypoints, fu_keypoints, indices)
+        registrator.register(bl_keypoints[indices], fu_keypoints[indices], transformation)
 
 
     @staticmethod
@@ -63,7 +67,7 @@ class RetinaRegistration:
 
         for point in k1:
             ret_k1.append(point)
-            closest_index = np.argmin(np.linalg.norm(k2 - point))
+            closest_index = np.argmin(np.linalg.norm(k2 - point, axis=1))
             closest_k2_point = k2[closest_index]
             ret_k2.append(closest_k2_point)
             np.delete(k2, closest_index)
@@ -90,3 +94,12 @@ class RetinaRegistration:
         """
         pass
 
+
+if __name__ == '__main__':
+    dataset_path = "/home/edan/Desktop/HighRad/Exercises/data/Targil2_data_2018-20230315T115832Z-001/Targil2_data_2018"
+    bl = "BL01.tif"
+    fu = "FU01.tif"
+
+    bl = join(dataset_path, bl)
+    fu = join(dataset_path, fu)
+    RetinaRegistration.feature_registration(bl, fu)

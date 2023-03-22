@@ -71,7 +71,7 @@ def ransac(x, y, funcFindF, funcDist, minPtNum, iterNum, thDist, thInlrRatio):
 
     idx = inlrNum.tolist().index(max(inlrNum))
     f = fLib[idx]
-    dist = funcDist(x, y, f);
+    dist = funcDist(x, y, f)
     b = dist <= thDist
     r = np.array(range(len(b)))
     inlierIdx = r[b]
