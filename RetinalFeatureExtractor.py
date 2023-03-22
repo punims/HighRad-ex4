@@ -22,35 +22,29 @@ class RetinalFeatureExtractor:
         image = image[:image.shape[0] - 100, :, :]
 
         # Get green channel
-        green_channel = image[:, :, 1]
+        segmented_image = image[:, :, 1]
+
+        # take out cancer
+        segmented_image[450:1000, 500:1200] = 255
 
         # get complement of green channel
 
-        green_complement = np.max(green_channel) - green_channel
-        plt.imshow(green_complement, cmap='gray')
+        segmented_image = np.max(segmented_image) - segmented_image
+        plt.imshow(segmented_image, cmap='gray')
         plt.show()
         # use contrast limited adaptive histogram equalization
-        segmented_image = gaussian_filter(green_complement, sigma=3)
-        plt.imshow(segmented_image, cmap='gray')
-        plt.show()
-
-        clahe = cv2.createCLAHE(clipLimit=4, tileGridSize=(32, 32))
+        clahe = cv2.createCLAHE(clipLimit=20, tileGridSize=(8, 8))
         segmented_image = clahe.apply(segmented_image)
-        plt.imshow(segmented_image, cmap='gray')
-        plt.show()
-
 
         # Otsu thresholding
-        segmented_image = gaussian_filter(segmented_image, sigma=1)
+        segmented_image = median_filter(segmented_image, 7)
         ret3,segmented_image = cv2.threshold(segmented_image,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-        plt.imshow(segmented_image, cmap='gray')
-        plt.show()
 
 
         # Morphological operations
-        # segmented_image = binary_opening(segmented_image, disk(3), iterations=2)
-        # segmented_image = binary_opening(segmented_image, disk(1), iterations=5)
-        # segmented_image = binary_erosion(segmented_image, disk(3), iterations=2)
+        segmented_image = binary_opening(segmented_image, disk(3), iterations=2)
+        segmented_image = binary_opening(segmented_image, disk(1), iterations=5)
+        segmented_image = binary_erosion(segmented_image, disk(3), iterations=2)
         segmented_image = median_filter(segmented_image, footprint=disk(3))
         segmented_image, components = label(segmented_image)
         segmented_image = segmented_image == np.argmax(np.bincount(segmented_image.flat)[1:]) + 1
