@@ -3,8 +3,9 @@ from os import path
 import cv2
 from matplotlib import pyplot as plt
 from PIL import Image
-from skimage.morphology import disk
-from scipy.ndimage import median_filter, binary_opening, binary_erosion, label
+from skimage.morphology import disk, opening, erosion
+from scipy.ndimage import median_filter, binary_opening, binary_erosion, label, gaussian_filter
+
 
 class RetinalFeatureExtractor:
     """
@@ -36,7 +37,7 @@ class RetinalFeatureExtractor:
         segmented_image = image[:, :, 1]
 
         # take out cancer
-        segmented_image[450:1000, 500:1200] = 255
+        # segmented_image[450:1000, 500:1200] = 255
 
         # get complement of green channel
 
@@ -47,12 +48,12 @@ class RetinalFeatureExtractor:
         clahe = cv2.createCLAHE(clipLimit=20, tileGridSize=(8, 8))
         segmented_image = clahe.apply(segmented_image)
 
-        # Otsu thresholding
+        # # Otsu thresholding
         segmented_image = median_filter(segmented_image, 7)
-        ret3,segmented_image = cv2.threshold(segmented_image,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-
+        ret3, segmented_image = cv2.threshold(segmented_image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
         # Morphological operations
+
         segmented_image = binary_opening(segmented_image, disk(3), iterations=2)
         segmented_image = binary_opening(segmented_image, disk(1), iterations=5)
         segmented_image = binary_erosion(segmented_image, disk(3), iterations=2)
@@ -64,6 +65,72 @@ class RetinalFeatureExtractor:
 
         return segmented_image
 
+    @staticmethod
+    def segment_blood_vessel_2(image: np.ndarray) -> np.ndarray:
+        """
+        Receives an image of a retina as a ndarray and tries to segment the blood vessels from within the retina image.
+        Parameters
+        ----------
+        image
+
+        Returns
+        segmentation image.
+        -------
+
+        """
+
+        # worked according to this method: https://iopscience.iop.org/article/10.1088/1742-6596/1376/1/012023/pdf
+
+        # crop bottom label
+
+        image = image[:image.shape[0] - 100, :, :]
+
+        # Get green channel
+        segmented_image = image[:, :, 1]
+
+        # get complement of green channel
+
+        segmented_image = np.max(segmented_image) - segmented_image
+        plt.imshow(segmented_image, cmap='gray')
+        plt.show()
+        # use contrast limited adaptive histogram equalization
+        clahe = cv2.createCLAHE(clipLimit=100, tileGridSize=(8, 8))
+        segmented_image = clahe.apply(segmented_image)
+
+        plt.imshow(segmented_image, cmap='gray')
+        plt.show()
+        segmented_image = median_filter(segmented_image, 2)
+        segmented_image = median_filter(segmented_image, 3)
+        segmented_image = median_filter(segmented_image, 4)
+        segmented_image = median_filter(segmented_image, 5)
+
+        plt.imshow(segmented_image, cmap='gray')
+        plt.show()
+
+        # take out cancer
+        segmented_image[450:1000, 500:1200] = 0
+
+        segmented_image[opening(segmented_image, disk(8)) < 50] = 0
+        segmented_image = erosion(segmented_image, disk(3))
+        segmented_image = erosion(segmented_image, disk(3))
+        segmented_image = erosion(segmented_image, disk(3))
+        segmented_image = erosion(segmented_image, disk(3))
+        plt.imshow(segmented_image, cmap='gray')
+        plt.show()
+
+        segmented_image = median_filter(segmented_image, 2)
+        segmented_image = median_filter(segmented_image, 3)
+        segmented_image = median_filter(segmented_image, 4)
+        segmented_image = median_filter(segmented_image, 5)
+
+        segmented_image = gaussian_filter(segmented_image, sigma=3)
+        plt.imshow(segmented_image, cmap='gray')
+        plt.show()
+
+
+
+
+        return segmented_image
     @staticmethod
     def find_retina_features(image: np.ndarray) -> list:
         """
@@ -95,5 +162,5 @@ if __name__ == '__main__':
     bl_path = path.join(dataset_path, bl)
     image = Image.open(bl_path)
     im_arr = np.array(image)
-    # RetinalFeatureExtractor.segment_blood_vessel(im_arr)
-    RetinalFeatureExtractor.find_retina_features(im_arr)
+    RetinalFeatureExtractor.segment_blood_vessel(im_arr)
+    # RetinalFeatureExtractor.find_retina_features(im_arr)

@@ -206,7 +206,7 @@ class RigidTransformFinder:
         new_img.save("new.png", "PNG")
 
 
-    def calc_robust_point_based_reg(self, bl_with_outliers: np.ndarray, fu_with_outliers: np.ndarray) -> np.ndarray:
+    def calc_robust_point_based_reg(self, bl_with_outliers: np.ndarray, fu_with_outliers: np.ndarray) -> tuple[None, None]:
         """
         Given two sets of points that might contain outliers from the bl and fu images
         uses ransac to find the best transformation using these sets of points.
