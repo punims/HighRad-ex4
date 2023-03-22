@@ -55,7 +55,21 @@ class RetinaRegistration:
         -------
 
         """
-        pass
+
+        ret_k1 = []
+        ret_k2 = []
+
+        k2 = np.array(k2)
+
+        for point in k1:
+            ret_k1.append(point)
+            closest_index = np.argmin(np.linalg.norm(k2 - point))
+            closest_k2_point = k2[closest_index]
+            ret_k2.append(closest_k2_point)
+            np.delete(k2, closest_index)
+
+        return ret_k1, ret_k2
+
 
     @staticmethod
     def cross_correlation_registration(bl_path: str, fu_path: str):
