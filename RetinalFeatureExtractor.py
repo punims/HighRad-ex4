@@ -53,13 +53,24 @@ class RetinalFeatureExtractor:
 
     @staticmethod
     def find_retina_features(image):
-        pass
+        sift = cv2.SIFT_create()
+        kp = sift.detect(image, None)
+        sift_image = cv2.drawKeypoints(image, kp, image)
+        # show the image
+        cv2.imshow('image', sift_image)
+        # save the image
+        cv2.imwrite("table-sift.jpg", sift_image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        return kp
 
 
 if __name__ == '__main__':
     dataset_path = "/home/edan/Desktop/HighRad/Exercises/data/Targil2_data_2018-20230315T115832Z-001/Targil2_data_2018"
-    bl = "BL01.tif"
+    # bl = "BL01.tif"
+    bl = "BL04.bmp"
     bl_path = path.join(dataset_path, bl)
     image = Image.open(bl_path)
     im_arr = np.array(image)
-    RetinalFeatureExtractor.segment_blood_vessel(im_arr)
+    # RetinalFeatureExtractor.segment_blood_vessel(im_arr)
+    RetinalFeatureExtractor.find_retina_features(im_arr)
